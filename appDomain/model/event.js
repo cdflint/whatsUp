@@ -36,6 +36,7 @@ var endDateValidators = [
 ];
 var EventSchema = new Schema({
 
+  groupId : Schema.Types.ObjectId,
   // id: String,
   _creator: { type: Schema.Types.ObjectId, ref: 'User' }, //populated field
   name: {

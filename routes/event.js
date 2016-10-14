@@ -11,6 +11,8 @@ var Event = domain.dataRepository.Event;
 var geoCoder = require('../appDomain/mdimapgeocoder');
 var isLoggedIn = domain.authentication.isLoggedIn;
 var http = require('http');
+var async = require('async');
+
 geoCoder.browser = false; //for windows
 
 //middleware makes sure user is logged in before proceeding.
@@ -51,7 +53,6 @@ router.get('/', function(req, res) {//Lookup users events and load them into pan
     else
       return done( false, user );
   });
-
 });
 
 //Get add event page
@@ -65,9 +66,9 @@ router.get('/edit/:id', function( req, res ){
   console.log("Got GET for event update", id);
   Event.findOne({ _id: id}, function( err, event ){
     res.render('event/edit',{
-       rootPath:"../../",
-       event: event, 
-       detail: event.detail,
+      rootPath:"../../",
+      event: event, 
+      detail: event.detail,
       title: "Edit Event" } );
   });
 
@@ -133,11 +134,11 @@ router.post('/edit',
     var done = function( err, event ){
       if( err )
         return res.render('event/edit',{
-            message: req.flash('eventsMessage'),
-            err: err, 
-            event: event, 
-            detail: event.detail,
-            title: 'Edit Events' } );
+          message: req.flash('eventsMessage'),
+          err: err, 
+          event: event, 
+          detail: event.detail,
+          title: 'Edit Events' } );
       res.redirect( rootPath + 'event' );
     }
     //For update
@@ -203,6 +204,7 @@ router.post('/edit',
 //
 //Get data from add event page, validate and save
 router.post('/add', function( req, res ){
+  console.log( req.body )
   var done = function( err, event ){
     if( err )
       return res.render('event/add', 
@@ -216,6 +218,19 @@ router.post('/add', function( req, res ){
   }
   var data = req.body;
   var user = req.user;
+
+  User.findOne({ email: req.user.email }, function( err, user ){//Find user
+    var location;
+    if( err )
+      return done( true );
+    if( !user )
+      return done( true );
+    addManyEvents( user, data, done );
+
+  });
+});
+
+function addOneEvent( user, data, done ){
   var newEvent = new Event({//Create new event model
     name: data.eventTitle,  
     _creator: user._id,
@@ -230,46 +245,120 @@ router.post('/add', function( req, res ){
       ZIP: data.zip
     }
   });
-
-  User.findOne({ email: req.user.email }, function( err, user ){//Find user
-    var location;
+  geoCoder.search({//Use geocoder to lookup
+    Street: data.streetAddress,
+    City: data.city,
+    State: data.state,
+    ZIP: data.zip
+  }, function( err, res ){
     if( err )
-      return done( true );
-    if( !user )
-      return done( true );
-    //Geocode
-    geoCoder.search({//Use geocoder to lookup
-      Street: data.streetAddress,
-      City: data.city,
-      State: data.state,
-      ZIP: data.zip
-    }, function( err, res ){
-      if( err )
+      return done( err, newEvent );
+    if( res.candidates.length == 0 ){//If no candidates
+      req.flash('eventsMessage', 'Could not find that address, please try agian.');
+      return done( true, newEvent );
+    }
+    for( i in res.candidates  ){
+      var place = res.candidates[i];
+      if( place.score > 79 ) {
+        location = place.location;//Else select first candidate
+        newEvent.location = location;
+        break;
+      }
+    }
+    //Add validation step
+    newEvent.save(function( err ){//Save new event
+      if( err){
+        req.flash('eventsMessage','Error adding event');
         return done( err, newEvent );
-      if( res.candidates.length == 0 ){//If no candidates
-        req.flash('eventsMessage', 'Could not find that address, please try agian.');
-        return done( true, newEvent );
       }
-      for( i in res.candidates  ){
-        var place = res.candidates[i];
-        if( place.score > 79 ) {
-          location = place.location;//Else select first candidate
-          newEvent.location = location;
-          break;
-        }
+      user.pushEvent( newEvent._id );//push event to user
+      user.save();//Save user
+      done( false );
+    });
+  });     
+}
+function addManyEvents( user, data, done ){
+  var newEvent = new Event({//Create new event model
+    name: data.eventTitle,  
+    _creator: user._id,
+    date: new Date(),
+    detail:{
+      address: data.streetAddress,
+      description: data.description,
+      startDate: data.startDate + " " + data.startTime,
+      endDate: data.endDate + " " + data.endTime,
+      city: data.city,
+      state: data.state,
+      ZIP: data.zip
+    }
+  });
+  geoCoder.search({//Use geocoder to lookup
+    Street: data.streetAddress,
+    City: data.city,
+    State: data.state,
+    ZIP: data.zip
+  }, function( err, res ){
+    if( err )
+      return done( err, newEvent );
+    if( res.candidates.length == 0 ){//If no candidates
+      req.flash('eventsMessage', 'Could not find that address, please try agian.');
+      return done( true, newEvent );
+    }
+    for( i in res.candidates  ){
+      var place = res.candidates[i];
+      if( place.score > 79 ) {
+        location = place.location;//Else select first candidate
+        newEvent.location = location;
+        break;
       }
-      //Add validation step
-      newEvent.save(function( err ){//Save new event
+    }
+    events = generateRecurrentEvents( newEvent, data.recurrace );
+    async.eachSeries( events, function( event, done ){
+      event.save(function( err ){//Save new event
         if( err){
           req.flash('eventsMessage','Error adding event');
           return done( err, newEvent );
         }
-        user.pushEvent( newEvent._id );//push event to user
+        user.pushEvent( event._id );//push event to user
         user.save();//Save user
         done( false );
-      });
-    });     
+      })
+    },function( err ){
+      done( true );
+    });
+
+
   });
-});
+}
+
+function generateRecurrentEvents( eventModel, range ){
+  var currEvent = eventModel;
+  var events = [];
+  events.push(eventModel);
+  for( var i = 0; i< 3; i++ ){
+    var currEvent = incrementByOneWeek( currEvent );
+    events.push( currEvent );
+  }  
+  return events;
+
+}
+function incrementByOneWeek( event ){
+  return new Event({//Create new event model
+    name: data.eventTitle,
+    _creator: user._id,
+    date: new Date(),
+    detail:{
+      address: event.address,
+      description: event.description,
+      startDate: event.startDate.getDate() + 7,
+      endDate: event.endDate.getDate() + 7,
+      city: event.city,
+      state: event.state,
+      ZIP: event.zip
+    }
+  });
+}
+function removeRecurrentEvents( eventModel ){
+}
 
 module.exports = router;
