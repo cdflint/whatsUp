@@ -206,6 +206,7 @@ router.post('/edit',
 router.post('/add', function( req, res ){
   console.log( req.body )
   var done = function( err, event ){
+    console.log("DONE add");
     if( err )
       return res.render('event/add', 
         { message: req.flash('eventsMessage'),
@@ -225,12 +226,12 @@ router.post('/add', function( req, res ){
       return done( true );
     if( !user )
       return done( true );
-    addManyEvents( user, data, done );
+    addManyEvents( user, data, req, done );
 
   });
 });
 
-function addOneEvent( user, data, done ){
+function addOneEvent( user, data, req, done ){
   var newEvent = new Event({//Create new event model
     name: data.eventTitle,  
     _creator: user._id,
@@ -277,7 +278,7 @@ function addOneEvent( user, data, done ){
     });
   });     
 }
-function addManyEvents( user, data, done ){
+function addManyEvents( user, data, req, done ){
   var newEvent = new Event({//Create new event model
     name: data.eventTitle,  
     _creator: user._id,
@@ -316,15 +317,22 @@ function addManyEvents( user, data, done ){
     async.eachSeries( events, function( event, done ){
       event.save(function( err ){//Save new event
         if( err){
+          console.log("Event saving error");
           req.flash('eventsMessage','Error adding event');
           return done( err, newEvent );
         }
+        console.log("Done");
         user.pushEvent( event._id );//push event to user
-        user.save();//Save user
-        done( false );
+        user.save();//Save useri
+        return done( false );
       })
+      console.log(event);
     },function( err ){
-      done( true );
+      console.log( "Done async" );
+      if( err )
+        done( true, newEvent );
+      else
+        done( false );
     });
 
 
@@ -343,18 +351,26 @@ function generateRecurrentEvents( eventModel, range ){
 
 }
 function incrementByOneWeek( event ){
+  console.log( "INCREMENT", event );
+  var d = event.detail;
+  var newStart = new Date(d.startDate);
+  var newEnd = new Date(d.endDate);
+  
+  newStart.setDate( newStart.getDate() + 7 );
+  newEnd.setDate( newEnd.getDate() + 7 );
+
   return new Event({//Create new event model
-    name: data.eventTitle,
-    _creator: user._id,
+    name: event.eventTitle,
+    _creator: event._creator,
     date: new Date(),
     detail:{
-      address: event.address,
-      description: event.description,
-      startDate: event.startDate.getDate() + 7,
-      endDate: event.endDate.getDate() + 7,
-      city: event.city,
-      state: event.state,
-      ZIP: event.zip
+      address: d.address,
+      description: d.description,
+      startDate: newStart,
+      endDate: newEnd,
+      city: d.city,
+      state: d.state,
+      ZIP: d.zip
     }
   });
 }
