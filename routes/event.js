@@ -1,7 +1,6 @@
 /*
 Event map page
 */
-
 var express = require('express');
 var auth = require('authorized');
 var router = express.Router();
@@ -12,7 +11,7 @@ var geoCoder = require('../appDomain/mdimapgeocoder');
 var isLoggedIn = domain.authentication.isLoggedIn;
 var http = require('http');
 var async = require('async');
-
+var endOfLine = require('os').EOL;
 geoCoder.browser = false; //for windows
 
 //middleware makes sure user is logged in before proceeding.
@@ -226,12 +225,15 @@ router.post('/add', function( req, res ){
       return done( true );
     if( !user )
       return done( true );
+    if( data.recurrence == 'Once' )
+      return addOneEvent( user, data, req, done );
     addManyEvents( user, data, req, done );
 
   });
 });
 
 function addOneEvent( user, data, req, done ){
+  console.log("Adding one event");
   var newEvent = new Event({//Create new event model
     name: data.eventTitle,  
     _creator: user._id,
@@ -279,6 +281,7 @@ function addOneEvent( user, data, req, done ){
   });     
 }
 function addManyEvents( user, data, req, done ){
+  console.log("Adding many events");
   var newEvent = new Event({//Create new event model
     name: data.eventTitle,  
     _creator: user._id,
@@ -313,22 +316,21 @@ function addManyEvents( user, data, req, done ){
         break;
       }
     }
-    events = generateRecurrentEvents( newEvent, data.recurrace );
-    async.eachSeries( events, function( event, done ){
+    events = generateRecurrentEvents( newEvent, data.recurrence );
+    async.eachSeries( events, function( event, onErr ){
       event.save(function( err ){//Save new event
         if( err){
           console.log("Event saving error");
           req.flash('eventsMessage','Error adding event');
-          return done( err, newEvent );
+          return onErr( err );
         }
-        console.log("Done");
         user.pushEvent( event._id );//push event to user
         user.save();//Save useri
-        return done( false );
+        return onErr( false );
       })
-      console.log(event);
     },function( err ){
       console.log( "Done async" );
+      console.log( err );
       if( err )
         done( true, newEvent );
       else
@@ -339,41 +341,76 @@ function addManyEvents( user, data, req, done ){
   });
 }
 
-function generateRecurrentEvents( eventModel, range ){
+function generateRecurrentEvents( eventModel, recurrence ){
   var currEvent = eventModel;
   var events = [];
+  var incrementer = null;
+
+  var d = eventModel.detail;
+  var newStart = new Date(d.startDate);
+  var newEnd = new Date(d.endDate);
   events.push(eventModel);
+
+
+  console.log("Pre switch", recurrence );
+  switch( recurrence ){
+    case 'Monthly': incrementer = weeklyIncrementer;
+      break;
+    case 'Weekly': incrementer = weeklyIncrementer;
+      break;
+    case 'Daily': incrementer = dailyIncrementer;
+      break;
+  }
+  console.log("Post switch", recurrence );
   for( var i = 0; i< 3; i++ ){
-    var currEvent = incrementByOneWeek( currEvent );
+    var currEvent = copyEvent( currEvent, incrementer( newStart, newEnd ) );
+    newStart = new Date( currEvent.detail.startDate );
+    newEnd =  new Date( currEvent.detail.endDate ); 
     events.push( currEvent );
   }  
   return events;
 
 }
-function incrementByOneWeek( event ){
-  console.log( "INCREMENT", event );
-  var d = event.detail;
-  var newStart = new Date(d.startDate);
-  var newEnd = new Date(d.endDate);
-  
+
+function monthlyIncrementer( newStart, newEnd ){
+  newStart.setDate( newStart.getMonth() + 1 );
+  newEnd.setDate( newEnd.getMonth() + 1 );
+  return { newStart: newStart, newEnd: newEnd };
+}
+
+function weeklyIncrementer( newStart, newEnd ){
   newStart.setDate( newStart.getDate() + 7 );
   newEnd.setDate( newEnd.getDate() + 7 );
+  return { newStart: newStart, newEnd: newEnd };
+}
+
+function dailyIncrementer( newStart, newEnd ){
+  newStart.setDate( newStart.getDate() + 1 );
+  newEnd.setDate( newEnd.getDate() + 1 );
+  return { newStart: newStart, newEnd: newEnd };
+}
+
+function copyEvent( event, dates ){
+  var d = event.detail;
+
 
   return new Event({//Create new event model
-    name: event.eventTitle,
+    name: event.name,
     _creator: event._creator,
     date: new Date(),
+    location: event.location,
     detail:{
       address: d.address,
       description: d.description,
-      startDate: newStart,
-      endDate: newEnd,
+      startDate: dates.newStart,
+      endDate: dates.newEnd,
       city: d.city,
       state: d.state,
-      ZIP: d.zip
+      ZIP: d.ZIP
     }
   });
 }
+
 function removeRecurrentEvents( eventModel ){
 }
 
