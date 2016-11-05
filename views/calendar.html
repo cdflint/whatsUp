@@ -1,0 +1,31 @@
+{{#contentFor 'customCss'}}
+  <link href='{{rootPath}}lib/fullcalendar/fullcalendar.css' rel="stylesheet"></link>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/qtip2/3.0.3/jquery.qtip.min.css" />
+{{/contentFor}}
+<div class="container">
+  {{#if message}}
+  <div class='alert alert-danger text-center'>
+    {{message}}
+  </div>
+  {{/if}}
+  </br>
+</div>
+<div class='row'>
+  <div class='col-md-12' id='calendar'>
+  </div>
+</div>
+{{#contentFor 'scripts'}}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.15.2/moment.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qtip2/3.0.3/jquery.qtip.min.js"></script>
+<script src='{{rootPath}}lib/fullcalendar/fullcalendar.min.js'></script>
+<script src='{{rootPath}}build/whatsup-calendar.js'></script>
+<script>
+$(function(){
+    if( typeof startUp == 'function' )
+    startUp()
+    
+    });
+</script>
+{{/contentFor}}
+
+

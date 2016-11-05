@@ -354,7 +354,7 @@ function generateRecurrentEvents( eventModel, recurrence ){
 
   console.log("Pre switch", recurrence );
   switch( recurrence ){
-    case 'Monthly': incrementer = weeklyIncrementer;
+    case 'Monthly': incrementer = monthlyIncrementer;
       break;
     case 'Weekly': incrementer = weeklyIncrementer;
       break;
@@ -373,8 +373,8 @@ function generateRecurrentEvents( eventModel, recurrence ){
 }
 
 function monthlyIncrementer( newStart, newEnd ){
-  newStart.setDate( newStart.getMonth() + 1 );
-  newEnd.setDate( newEnd.getMonth() + 1 );
+  newStart.setMonth( newStart.getMonth() + 1 );
+  newEnd.setMonth( newEnd.getMonth() + 1 );
   return { newStart: newStart, newEnd: newEnd };
 }
 

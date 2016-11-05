@@ -41,7 +41,8 @@
     "serve-favicon": "~2.0.1",
     "mdimapgeocoder": "~0.1.6",
     "bootstrap-timepicker":"~0.5.2",
-    "async":"2.1.1"
+    "async":"2.1.1",
+    "fullcalendar":"3.0.1"
   },
   "devDependencies": {
     "grunt": "^0.4.5",

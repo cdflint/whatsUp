@@ -10,6 +10,7 @@ var events = require('./events');
 var profile = require('./profile');
 var map = require('./map');
 var list = require('./list');
+var calendar = require('./calendar');
 // var create = require('./create');
 
 //authorized middleware
@@ -34,6 +35,7 @@ router.use('/auth', auth);
 router.use('/profile', profile);
 router.use('/map', map);
 router.use('/list', list);
+router.use('/calendar', calendar );
 //Api routes
 router.use('/events', events);
 router.use('/users', users);

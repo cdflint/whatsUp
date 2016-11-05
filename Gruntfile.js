@@ -63,6 +63,9 @@ module.exports = function(grunt) {
           'public/build/<%= pkg.name %>-signup.js':[
             'public/js/signup/*.js'
           ],
+          'public/build/forms/<%= pkg.name %>-addEvent.js':[
+            'public/js/forms/addEvent.js'
+          ],
           'public/build/<%= pkg.name %>-map.js':[
             'public/js/util/*.js',
             'public/js/helpers/*.js',
@@ -74,6 +77,9 @@ module.exports = function(grunt) {
             'public/js/eventMap/views/*.js',
             'public/js/shared/*.js',
             'public/js/shared/**/*.js'
+          ],
+          'public/build/<%= pkg.name  %>-calendar.js':[
+            'public/js/calendar/index.js'
           ]
         }
       }

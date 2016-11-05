@@ -133,9 +133,9 @@
         </div>
 
         <div class = "form-group">
-          <label class="col-md-3 control-label"> Set Recurrance </label>
+          <label class="col-md-3 control-label"> Set Recurrence </label>
           <div class="col-md-6">
-            <select class="form-control" id="sel1" name="recurrence">
+            <select class="form-control" id="recurrenceSelect" name="recurrence">
               <option>Once</option>
               <option>Daily</option>
               <option>Weekly</option>
@@ -146,6 +146,13 @@
 
 
         <div class="form-group">
+          <label class="col-md-3 control-label">Number of Recurrences</label>
+          <div class='col-md-6'>
+            <input type='number' id="recurrenceNumber" name='recurrenceNumber' disabled></input>
+          </div>
+        </div>
+
+        <div class="form-group">
           <div class="col-md-6 col-md-offset-3">
             <button class="btn btn-primary" id="proceedBtn" type="submit">
               Submit
@@ -153,6 +160,8 @@
             <a class="btn btn-default" href="{{rootPath}}event">Cancel</a>
           </div>
         </div>
+       
+
       </form>
     </div>
   </div>
@@ -160,10 +169,5 @@
 {{#contentFor 'scripts'}}
 <script src="{{rootPath}}/lib/bootstrap-datepicker/js/bootstrap-datepicker.min.js"></script>
 <script src="{{rootPath}}/lib/bootstrap-timepicker/js/bootstrap-timepicker.min.js"></script>
-<script>
-$('#startDate').datepicker();
-$('#endDate').datepicker();
-$('#startTime').timepicker();
-$('#endTime').timepicker();
-</script>
+<script src='{{rootPath}}build/forms/whatsup-addEvent.js'></script>
 {{/contentFor}}
