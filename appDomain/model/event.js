@@ -24,7 +24,7 @@ var endDateAfterToday = function(endDate) {
 }
 
 var endDateAfterStartDate = function(endDate) {
-  console.log("Start date end datae .............");
+  console.log("Start date end date .............");
   if (this.detail.startDate > endDate)
     return false
   return true
@@ -38,7 +38,16 @@ var EventSchema = new Schema({
 
   groupId : Schema.Types.ObjectId,
   // id: String,
-  _creator: { type: Schema.Types.ObjectId, ref: 'User' }, //populated field
+  _creator: { 
+      type: Schema.Types.ObjectId,
+       ref: 'User'
+  }, //populated field
+  recurring:{ 
+    type: Boolean,
+  },
+  recurrenceId: {
+    type: String,
+  },
   name: {
     type: String,
     required: [true, "Event name is required"],

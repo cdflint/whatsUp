@@ -66,6 +66,9 @@ module.exports = function(grunt) {
           'public/build/forms/<%= pkg.name %>-addEvent.js':[
             'public/js/forms/addEvent.js'
           ],
+          'public/build/forms/<%= pkg.name %>-manageEvent.js':[
+            'public/js/forms/manageEvent.js'
+          ],
           'public/build/<%= pkg.name %>-map.js':[
             'public/js/util/*.js',
             'public/js/helpers/*.js',

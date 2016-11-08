@@ -127,6 +127,7 @@ router.post('/edit',
   auth.can('manage event'), function( req, res ){
     console.log("Got post for edit")
     var data = req.body;
+    console.log("Editing event", data );
     var user = req.user;
     var id = data.id;
     //Done callback
@@ -280,11 +281,13 @@ function addOneEvent( user, data, req, done ){
     });
   });     
 }
+//Function for adding many events
 function addManyEvents( user, data, req, done ){
-  console.log("Adding many events");
   var newEvent = new Event({//Create new event model
     name: data.eventTitle,  
     _creator: user._id,
+    recurring: true,
+    recurrenceId: Math.random().toString(36).substring(7),
     date: new Date(),
     detail:{
       address: data.streetAddress,
@@ -296,6 +299,10 @@ function addManyEvents( user, data, req, done ){
       ZIP: data.zip
     }
   });
+  if( data.recurrenceNumber < 2 ){
+    req.flash('eventsMessage', 'Number of recurrences must be at least 2 if recurring'); 
+    return done( true, newEvent );
+  }
   geoCoder.search({//Use geocoder to lookup
     Street: data.streetAddress,
     City: data.city,
@@ -311,16 +318,16 @@ function addManyEvents( user, data, req, done ){
     for( i in res.candidates  ){
       var place = res.candidates[i];
       if( place.score > 79 ) {
-        location = place.location;//Else select first candidate
+        location = place.location;// select first candidate with score > 79
         newEvent.location = location;
         break;
       }
     }
-    events = generateRecurrentEvents( newEvent, data.recurrence );
+    //Create events from generate recurrenct events function
+    events = generateRecurrentEvents( newEvent, data.recurrence, ( data.recurrenceNumber - 1 ) );
     async.eachSeries( events, function( event, onErr ){
       event.save(function( err ){//Save new event
         if( err){
-          console.log("Event saving error");
           req.flash('eventsMessage','Error adding event');
           return onErr( err );
         }
@@ -329,30 +336,24 @@ function addManyEvents( user, data, req, done ){
         return onErr( false );
       })
     },function( err ){
-      console.log( "Done async" );
-      console.log( err );
       if( err )
         done( true, newEvent );
       else
         done( false );
     });
-
-
   });
 }
-
-function generateRecurrentEvents( eventModel, recurrence ){
+//Replicate model recurrenceNumber times
+function generateRecurrentEvents( eventModel, recurrence, recurrenceNumber ){
   var currEvent = eventModel;
   var events = [];
   var incrementer = null;
-
   var d = eventModel.detail;
   var newStart = new Date(d.startDate);
   var newEnd = new Date(d.endDate);
   events.push(eventModel);
 
 
-  console.log("Pre switch", recurrence );
   switch( recurrence ){
     case 'Monthly': incrementer = monthlyIncrementer;
       break;
@@ -361,8 +362,8 @@ function generateRecurrentEvents( eventModel, recurrence ){
     case 'Daily': incrementer = dailyIncrementer;
       break;
   }
-  console.log("Post switch", recurrence );
-  for( var i = 0; i< 3; i++ ){
+  
+  for( var i = 0; i< recurrenceNumber; i++ ){
     var currEvent = copyEvent( currEvent, incrementer( newStart, newEnd ) );
     newStart = new Date( currEvent.detail.startDate );
     newEnd =  new Date( currEvent.detail.endDate ); 
@@ -372,6 +373,7 @@ function generateRecurrentEvents( eventModel, recurrence ){
 
 }
 
+///Funtions to increment
 function monthlyIncrementer( newStart, newEnd ){
   newStart.setMonth( newStart.getMonth() + 1 );
   newEnd.setMonth( newEnd.getMonth() + 1 );
@@ -392,10 +394,10 @@ function dailyIncrementer( newStart, newEnd ){
 
 function copyEvent( event, dates ){
   var d = event.detail;
-
-
   return new Event({//Create new event model
     name: event.name,
+    recurring: event.recurring,
+    recurrenceId: event.recurrenceId,
     _creator: event._creator,
     date: new Date(),
     location: event.location,
