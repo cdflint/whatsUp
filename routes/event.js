@@ -237,6 +237,7 @@ function addOneEvent( user, data, req, done ){
   console.log("Adding one event");
   var newEvent = new Event({//Create new event model
     name: data.eventTitle,  
+    recurring: false,
     _creator: user._id,
     date: new Date(),
     detail:{
@@ -362,7 +363,7 @@ function generateRecurrentEvents( eventModel, recurrence, recurrenceNumber ){
     case 'Daily': incrementer = dailyIncrementer;
       break;
   }
-  
+
   for( var i = 0; i< recurrenceNumber; i++ ){
     var currEvent = copyEvent( currEvent, incrementer( newStart, newEnd ) );
     newStart = new Date( currEvent.detail.startDate );
