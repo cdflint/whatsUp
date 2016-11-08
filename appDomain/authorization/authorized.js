@@ -32,6 +32,7 @@ authorized.role('owner', function( req, done ){
   console.log( req.body );
   var user = req.user;
   var eventId = req.body.id;
+  console.log('Event id: %s', req.body.id);
   if( typeof user == 'undefined' )
     done( new Error('User was not found') );
   else{
